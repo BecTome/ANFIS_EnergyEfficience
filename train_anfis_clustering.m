@@ -35,8 +35,8 @@ results = [];
 parfor i = 1:length(typeMF)
     fprintf("\nType of MF: %", typeMF(i))
     for j = 1:length(trainingEpochs)
+        results_split = [];
         for k = 1:length(outputMF)
-            results_split = [];
             runTime = [];
             for split = 1:cv.NumTestSets
                 fprintf('\nSPLIT: %d', split)
@@ -53,9 +53,9 @@ parfor i = 1:length(typeMF)
         
                 % Generate FIS with given number of membership functions
                 opt = genfisOptions('GridPartition', ...
-                                    'ClusterInfluenceRange ',numMFs, ...,
-                                    'SquashFactor', typeMF(i), ...,
-                                    'AcceptRatio', outputMF(k));
+                                    'NumMembershipFunctions',numMFs, ...,
+                                    'InputMembershipFunctionType', typeMF(i), ...,
+                                    'OutputMembershipFunctionType', outputMF(k));
                 
                 fis = genfis(X_train, Y_train, opt);
           
@@ -85,6 +85,7 @@ parfor i = 1:length(typeMF)
                         results_split, mean(results_split), std(results_split),...
                         mean(runTime), std(runTime)];
             results = [results; newRow]; 
+            results_split = [];
         end
     end
 end

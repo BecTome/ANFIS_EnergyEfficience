@@ -74,7 +74,7 @@ for i = 1:length(10)
 end
 
 % Specify the name of the CSV file
-filename = 'results.csv';
+filename = 'results_best.csv';
 
 % Export the 'results' array to the CSV file
 writematrix(results, filename);
