@@ -100,16 +100,10 @@ filename = 'results_best.csv';
 % Export the table to CSV
 writetable(resultsTable, filename);
 
-best_results = [mean(str2double(resultsTable.Mean)) mean(str2double(resultsTable.Std))];
-table_best_results = array2table(best_results);
+mean(str2double(resultsTable.Mean));
+mean(str2double(resultsTable.Std));
 
-resultsTable.Properties.VariableNames = {'Mean', 'Std'};
-
-% Specify the name of the CSV file
-filename = 'results_best_mean_std.csv';
-
-% Export the table to CSV
-writetable(table_best_results, filename);
+best_results = [];
 
 % Graficar curvas de error
 figure;

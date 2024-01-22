@@ -1,0 +1,2 @@
+RUN,Epochs,TypeMF,OutputMF,Split1,Split2,Split3,Mean,Std,MeanTime,StdTime
+1,5,gbellmf,constant,5.4413,2.0846,1.0487,2.8582,2.2962,4.5587,0.036748
