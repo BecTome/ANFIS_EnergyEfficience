@@ -30,7 +30,8 @@ trainingEpochs = 5;  % Number of Training Epochs (example values)
 outputMF = "constant"; % Sugeno Function
 
 results = [];
-
+trainErrors = []; % Almacenar errores de entrenamiento
+testErrors = []; % Almacenar errores de prueba
 NRUNS = 1;
 
 % Loop over the range of hyperparameters
@@ -68,6 +69,10 @@ parfor i = 1:NRUNS
         trainingTime = toc;
         runTime = [runTime trainingTime];
 
+        % Acumular errores
+        trainErrors = [trainErrors; trainErr];
+        testErrors = [testErrors; testErr];
+
         % Evaluate the performance
         validErr = testErr(end);
         Y_pred = evalfis(testFis, X_test);
@@ -100,10 +105,10 @@ filename = 'results_best.csv';
 % Export the table to CSV
 writetable(resultsTable, filename);
 
-best_results = [mean(str2double(resultsTable.Mean)) mean(str2double(resultsTable.Std))];
+best_results = [mean(str2double(resultsTable.Mean)), mean(str2double(resultsTable.Std))];
 table_best_results = array2table(best_results);
 
-resultsTable.Properties.VariableNames = {'Mean', 'Std'};
+table_best_results.Properties.VariableNames = {'Mean', 'Std'};
 
 % Specify the name of the CSV file
 filename = 'results_best_mean_std.csv';
@@ -113,9 +118,9 @@ writetable(table_best_results, filename);
 
 % Graficar curvas de error
 figure;
-plot(mean(str2double(resultsTable.Mean), 1), 'b-'); % Media de errores de entrenamiento
+plot(mean(trainErrors, 1), 'b-'); % Media de errores de entrenamiento
 hold on;
-plot(mean(str2double(resultsTable.Mean), 1), 'r-'); % Media de errores de prueba
+plot(mean(testErrors, 1), 'r-'); % Media de errores de prueba
 xlabel('Epochs');
 ylabel('Error');
 legend('Training Error', 'Test Error');
