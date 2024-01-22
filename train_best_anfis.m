@@ -15,7 +15,7 @@ Y_orig = table2array(data(1:50, end-1));
 %% Train - Test - Validation split
 
 
-rng(123); % Fix random seed
+% rng(123); % Fix random seed
 n = size(X_orig, 1); % Total number of samples
 cv = cvpartition(n, 'KFold', N_SPLITS); % cv object -- training, test functions
 

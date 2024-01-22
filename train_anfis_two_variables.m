@@ -9,8 +9,8 @@ data = readtable("data/ENB2012_data.xlsx");
 
 %% Load your dataset
 % Assuming X is an Nx8 matrix (N samples, 8 inputs) and Y is an Nx2 matrix (N samples, 2 outputs)
-X_orig = table2array(data(1:100, [1, 7]));
-Y_orig = table2array(data(1:100, end-1));
+X_orig = table2array(data(:, [1, 7]));
+Y_orig = table2array(data(:, end-1));
 
 %% Train - Test - Validation split
 

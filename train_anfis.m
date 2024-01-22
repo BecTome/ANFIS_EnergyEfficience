@@ -9,8 +9,8 @@ data = readtable("data/ENB2012_data.xlsx");
 
 %% Load your dataset
 % Assuming X is an Nx8 matrix (N samples, 8 inputs) and Y is an Nx2 matrix (N samples, 2 outputs)
-X_orig = table2array(data(1:50, 1:end-4));
-Y_orig = table2array(data(1:50, end-1));
+X_orig = table2array(data(:, 1:end-2));
+Y_orig = table2array(data(:, end-1));
 
 %% Train - Test - Validation split
 
@@ -26,16 +26,18 @@ Y = Y_orig(shuffledIndices, :); % Shuffle Y
 % Define the range of hyperparameters to be tuned
 numMFs = 2;  % Number of Membership Functions (example values)
 typeMF = ["gbellmf", "gaussmf", "trimf", "trapmf"];
-trainingEpochs = [10 20 30];  % Number of Training Epochs (example values)
+trainingEpochs = [10 25 50];  % Number of Training Epochs (example values)
 outputMF = ["linear", "constant"]; % Sugeno Function
 
 results = [];
 % Loop over the range of hyperparameters
-for i = 1:length(typeMF)
+% tic;
+parfor i = 1:length(typeMF)
     fprintf("\nType of MF: %", typeMF(i))
     for j = 1:length(trainingEpochs)
         results_split = [];
         for k = 1:length(outputMF)
+            runTime = [];
             for split = 1:cv.NumTestSets
                 fprintf('\nSPLIT: %d', split)
                 % Training data for this fold
@@ -46,7 +48,7 @@ for i = 1:length(typeMF)
                 X_test = X_orig(test(cv, split), :);
                 Y_test = Y_orig(test(cv, split), :); % Set the seed for reproducibility
             
-            
+                
                 % Hyperparameter tuning
         
                 % Generate FIS with given number of membership functions
@@ -54,16 +56,21 @@ for i = 1:length(typeMF)
                                     'NumMembershipFunctions',numMFs, ...,
                                     'InputMembershipFunctionType', typeMF(i), ...,
                                     'OutputMembershipFunctionType', outputMF(k));
-        
+                
                 fis = genfis(X_train, Y_train, opt);
           
                 % Train the ANFIS model
                 % Pass X and Y separately to anfis when using anfisOptions
+
+                tic; % Start Timer
                 [trainedFis, trainErr, stepsize, testFis, testErr]=anfis([X_train Y_train], ...
                                                                            fis, ...
                                                                            trainingEpochs(j), ...
                                                                            NaN, ...
                                                                            [X_test Y_test]);
+                trainingTime = toc;
+                runTime = [runTime trainingTime];
+
                 % Evaluate the performance
                 validErr = testErr(end);
                 Y_pred = evalfis(testFis, X_test);
@@ -74,19 +81,22 @@ for i = 1:length(typeMF)
                 %end
                 results_split = [results_split validErr];
             end
-            newRow = [trainingEpochs(j), {typeMF(i)}, {outputMF(k)}, results_split, mean(results_split), std(results_split)];
+            newRow = [trainingEpochs(j), {typeMF(i)}, {outputMF(k)},...
+                        results_split, mean(results_split), std(results_split),...
+                        mean(runTime), std(runTime)];
             results = [results; newRow]; 
             results_split = [];
         end
     end
 end
-
+% fprintf("Elapsed Time: %f",toc);
 % Convert array to table
 resultsTable = array2table(results);
 
 % Set column headers
-resultsTable.Properties.VariableNames = {'Epochs', 'TypeMF', 'OutputMF', 'Split', 'Mean', 'Std'};
-
+resultsTable.Properties.VariableNames = {'Epochs', 'TypeMF', 'OutputMF', 'Split',... 
+                                         'Mean', 'Std', 'MeanTime', 'StdTime'};
+%%
 % Specify the name of the CSV file
 filename = 'results.csv';
 
