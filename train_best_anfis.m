@@ -3,14 +3,14 @@ clear;
 clc;
 close all;
 
-N_SPLITS = 3;
+N_SPLITS = 10;
 
 data = readtable("data/ENB2012_data.xlsx");
 
 %% Load your dataset
 % Assuming X is an Nx8 matrix (N samples, 8 inputs) and Y is an Nx2 matrix (N samples, 2 outputs)
-X_orig = table2array(data(1:100, 1:end-2));
-Y_orig = table2array(data(1:100, end-1));
+X_orig = table2array(data(:, 1:end-2));
+Y_orig = table2array(data(:, end-1));
 
 %% Train - Test - Validation split
 
@@ -26,18 +26,21 @@ Y = Y_orig(shuffledIndices, :); % Shuffle Y
 % Define the range of hyperparameters to be tuned
 numMFs = 2;  % Number of Membership Functions (example values)
 typeMF = "gbellmf";
-trainingEpochs = 5;  % Number of Training Epochs (example values)
+trainingEpochs = 50;  % Number of Training Epochs (example values)
 outputMF = "constant"; % Sugeno Function
 
 results = [];
-trainErrors = []; % Almacenar errores de entrenamiento
-testErrors = []; % Almacenar errores de prueba
-NRUNS = 1;
+errors_train = [];
+errors_test = [];
+
+NRUNS = 10;
 
 % Loop over the range of hyperparameters
 parfor i = 1:NRUNS
     results_split = [];
     runTime = [];
+    trainErrors = []; % Almacenar errores de entrenamiento
+    testErrors = []; % Almacenar errores de prueba
     for split = 1:cv.NumTestSets
         fprintf('\nSPLIT: %d', split)
         % Training data for this fold
@@ -48,9 +51,6 @@ parfor i = 1:NRUNS
         X_test = X_orig(test(cv, split), :);
         Y_test = Y_orig(test(cv, split), :); % Set the seed for reproducibility
     
-    
-        % Hyperparameter tuning
-
         % Generate FIS with given number of membership functions
         opt = genfisOptions('GridPartition', ...
                             'NumMembershipFunctions',numMFs, ...,
@@ -70,8 +70,8 @@ parfor i = 1:NRUNS
         runTime = [runTime trainingTime];
 
         % Acumular errores
-        trainErrors = [trainErrors; trainErr];
-        testErrors = [testErrors; testErr];
+        trainErrors = [trainErrors; trainErr'];
+        testErrors = [testErrors; testErr'];
 
         % Evaluate the performance
         validErr = testErr(end);
@@ -83,10 +83,12 @@ parfor i = 1:NRUNS
         %end
         results_split = [results_split validErr];
     end
+    errors_train = [errors_train; mean(trainErrors, 1)];
+    errors_test = [errors_test; mean(testErrors, 1)];
     newRow = [i trainingEpochs, typeMF, outputMF,...
                         results_split, mean(results_split), std(results_split),...
                         mean(runTime), std(runTime)];
-    results = [results; newRow]; 
+    results = [results; newRow];
 end
 
 % fprintf("Elapsed Time: %f",toc);
@@ -116,14 +118,37 @@ filename = 'results_best_mean_std.csv';
 % Export the table to CSV
 writetable(table_best_results, filename);
 
-% Graficar curvas de error
+% Plot error curves
+fig = figure;
+
+% Left Y-axis for training error
+yyaxis left;
+plot(errors_train(end,:), 'b-'); % Plot the last training errors
+ylabel('Training Error');
+
+% Right Y-axis for test error
+yyaxis right;
+plot(errors_test(end,:), 'r-'); % Plot the last test errors
+ylabel('Test Error');
+
+xlabel('Epochs');
+legend('Training Error', 'Test Error');
+title('Training and Test Error Curves');
+
+% Save the figure
+saveas(fig, 'rmse_best_params.png');
+
+% Plot curves on same Y-axis
 figure;
-plot(mean(trainErrors, 1), 'b-'); % Media de errores de entrenamiento
+plot(errors_train(end,:), 'b-');
 hold on;
-plot(mean(testErrors, 1), 'r-'); % Media de errores de prueba
+plot(errors_test(end,:), 'r-');
 xlabel('Epochs');
 ylabel('Error');
 legend('Training Error', 'Test Error');
 title('Training and Test Error Curves');
+
+saveas(figure,'rmse_best_params_same_axis.png')
+
 
 
