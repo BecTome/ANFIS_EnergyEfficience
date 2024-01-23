@@ -9,16 +9,11 @@ data = readtable("data/ENB2012_data.xlsx");
 
 %% Load your dataset
 % Assuming X is an Nx8 matrix (N samples, 8 inputs) and Y is an Nx2 matrix (N samples, 2 outputs)
-X_orig = table2array(data(1:50, 1:end-6));
-Y_orig = table2array(data(1:50, end-1));
+X_orig = table2array(data(:, 1:end-2));
+Y_orig = table2array(data(:, end-1));
 
 %% Train - Test - Validation split
-
-
-rng(123); % Fix random seed
 n = size(X_orig, 1); % Total number of samples
-cv = cvpartition(n, 'KFold', N_SPLITS); % cv object -- training, test functions
-
 shuffledIndices = randperm(n); % Shuffle indices
 X = X_orig(shuffledIndices, :); % Shuffle X
 Y = Y_orig(shuffledIndices, :); % Shuffle Y
@@ -26,7 +21,7 @@ Y = Y_orig(shuffledIndices, :); % Shuffle Y
 % Define the range of hyperparameters to be tuned
 numMFs = 2;  % Number of Membership Functions (example values)
 typeMF = ["gbellmf", "gaussmf", "trimf", "trapmf"]';
-trainingEpochs = [10 25 50]';  % Number of Training Epochs (example values)
+trainingEpochs = [25 50 75 100]';  % Number of Training Epochs (example values)
 outputMF = ["linear", "constant"]'; % Sugeno Function
 splits = [1:N_SPLITS]';
 
@@ -106,7 +101,7 @@ resultsTable.Properties.VariableNames = {'Epochs', 'TypeMF', 'OutputMF', 'Split'
                                          'Mean', 'Std', 'MeanTime', 'StdTime'};
 %%
 % Specify the name of the CSV file
-filename = 'results_example.csv';
+filename = 'results_2.csv';
 
 % Export the table to CSV
 writetable(resultsTable, filename);

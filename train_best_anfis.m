@@ -1,4 +1,4 @@
-%% Intro
+
 clear;
 clc;
 close all;
@@ -7,21 +7,12 @@ N_SPLITS = 10;
 
 data = readtable("data/ENB2012_data.xlsx");
 
-%% Load your dataset
+
 % Assuming X is an Nx8 matrix (N samples, 8 inputs) and Y is an Nx2 matrix (N samples, 2 outputs)
 X_orig = table2array(data(:, 1:end-2));
 Y_orig = table2array(data(:, end-1));
 
-%% Train - Test - Validation split
-
-
 % rng(123); % Fix random seed
-n = size(X_orig, 1); % Total number of samples
-cv = cvpartition(n, 'KFold', N_SPLITS); % cv object -- training, test functions
-
-shuffledIndices = randperm(n); % Shuffle indices
-X = X_orig(shuffledIndices, :); % Shuffle X
-Y = Y_orig(shuffledIndices, :); % Shuffle Y
 
 % Define the range of hyperparameters to be tuned
 numMFs = 2;  % Number of Membership Functions (example values)
@@ -37,6 +28,14 @@ NRUNS = 10;
 
 % Loop over the range of hyperparameters
 parfor i = 1:NRUNS
+    n = size(X_orig, 1); % Total number of samples
+
+    shuffledIndices = randperm(n); % Shuffle indices
+    X = X_orig(shuffledIndices, :); % Shuffle X
+    Y = Y_orig(shuffledIndices, :); % Shuffle Y
+
+    cv = cvpartition(n, 'KFold', N_SPLITS); % cv object -- training, test functions
+
     results_split = [];
     runTime = [];
     trainErrors = []; % Almacenar errores de entrenamiento
@@ -44,12 +43,12 @@ parfor i = 1:NRUNS
     for split = 1:cv.NumTestSets
         fprintf('\nSPLIT: %d', split)
         % Training data for this fold
-        X_train = X_orig(training(cv, split), :);
-        Y_train = Y_orig(training(cv, split), :);
+        X_train = X(training(cv, split), :);
+        Y_train = Y(training(cv, split), :);
     
         % Testing data for this fold
-        X_test = X_orig(test(cv, split), :);
-        Y_test = Y_orig(test(cv, split), :); % Set the seed for reproducibility
+        X_test = X(test(cv, split), :);
+        Y_test = Y(test(cv, split), :); % Set the seed for reproducibility
     
         % Generate FIS with given number of membership functions
         opt = genfisOptions('GridPartition', ...
@@ -85,7 +84,7 @@ parfor i = 1:NRUNS
     end
     errors_train = [errors_train; mean(trainErrors, 1)];
     errors_test = [errors_test; mean(testErrors, 1)];
-    newRow = [i trainingEpochs, typeMF, outputMF,...
+    newRow = [i, trainingEpochs, numMFs, typeMF, outputMF,...
                         results_split, mean(results_split), std(results_split),...
                         mean(runTime), std(runTime)];
     results = [results; newRow];
@@ -96,10 +95,12 @@ end
 resultsTable = array2table(results);
 
 % Set column headers
-resultsTable.Properties.VariableNames = {'RUN', 'Epochs', 'TypeMF', 'OutputMF', 'Split1', 'Split2', 'Split3', ...
+resultsTable.Properties.VariableNames = {'RUN', 'Epochs', 'numMFs', 'TypeMF', 'OutputMF',...
+                                        'Split1', 'Split2', 'Split3', 'Split4', 'Split5',...
+                                        'Split6', 'Split7', 'Split8','Split9','Split10',...
                                          'Mean', 'Std', 'MeanTime', 'StdTime'};
 
-%%
+%% dffd
 
 % Specify the name of the CSV file
 filename = 'results_best.csv';
@@ -107,7 +108,7 @@ filename = 'results_best.csv';
 % Export the table to CSV
 writetable(resultsTable, filename);
 
-best_results = [mean(str2double(resultsTable.Mean)), mean(str2double(resultsTable.Std))];
+best_results = [mean(str2double(resultsTable.Mean)), std(str2double(resultsTable.Mean))];
 table_best_results = array2table(best_results);
 
 table_best_results.Properties.VariableNames = {'Mean', 'Std'};
@@ -139,7 +140,7 @@ title('Training and Test Error Curves');
 saveas(fig, 'rmse_best_params.png');
 
 % Plot curves on same Y-axis
-figure;
+fig2 = figure;
 plot(errors_train(end,:), 'b-');
 hold on;
 plot(errors_test(end,:), 'r-');
@@ -148,7 +149,4 @@ ylabel('Error');
 legend('Training Error', 'Test Error');
 title('Training and Test Error Curves');
 
-saveas(figure,'rmse_best_params_same_axis.png')
-
-
-
+saveas(fig2,'rmse_best_params_same_axis.png')
