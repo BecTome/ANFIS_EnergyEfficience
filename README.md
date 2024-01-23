@@ -10,6 +10,10 @@ Results are compared to
 
 [1] Tsanas, A., & Xifara, A. (2012). Accurate quantitative estimation of energy performance of residential buildings using statistical machine learning tools. Energy and Buildings, 49, 560-567. https://doi.org/10.1016/j.enbuild.2012.03.003 
 
+## Dataset
+
+It can be found in the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/Energy+efficiency#). For Windows users it can be downloaded running `get_data.ps1` file.
+
 ## Setup
 
 - Matlab R2022b
