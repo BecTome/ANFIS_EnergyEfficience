@@ -24,81 +24,93 @@ X = X_orig(shuffledIndices, :); % Shuffle X
 Y = Y_orig(shuffledIndices, :); % Shuffle Y
 
 % Define the range of hyperparameters to be tuned
-numMFs = 2;  % Number of Membership Functions (example values)
-typeMF = ["gbellmf", "gaussmf", "trimf", "trapmf"];
-trainingEpochs = [10 25 50];  % Number of Training Epochs (example values)
-outputMF = ["linear", "constant"]; % Sugeno Function
+cInfR = [0.25, 0.5, 0.75]';
+accRt = [0.25, 0.5, 0.75]';
+rejRt = [0.15, 0.3, 0.45]';
+trainingEpochs = [10 25 50]';
 
+ma=size(cInfR,1);
+mb=size(accRt,1);
+mc=size(rejRt,1);
+md=size(trainingEpochs, 1);
+
+[a, b, c, d]=ndgrid(1:ma,1:mb,1:mc, 1:md);
+params = [cInfR(a,:), accRt(b,:), rejRt(c,:), trainingEpochs(d,:)];
+params = params(params(:,2) > params(:,3), :); % Ensure acceptance greater than rejections
+
+%%
 results = [];
-% Loop over the range of hyperparameters
-% tic;
-parfor i = 1:length(typeMF)
-    fprintf("\nType of MF: %", typeMF(i))
-    for j = 1:length(trainingEpochs)
-        results_split = [];
-        for k = 1:length(outputMF)
-            runTime = [];
-            for split = 1:cv.NumTestSets
-                fprintf('\nSPLIT: %d', split)
-                % Training data for this fold
-                X_train = X_orig(training(cv, split), :);
-                Y_train = Y_orig(training(cv, split), :);
-            
-                % Testing data for this fold
-                X_test = X_orig(test(cv, split), :);
-                Y_test = Y_orig(test(cv, split), :); % Set the seed for reproducibility
-            
-                
-                % Hyperparameter tuning
+for i = 1:size(params, 1)
+   cInfR_i = params(i, 1);
+   accRt_i = params(i, 2);
+   rejRt_i = params(i, 3);
+   trainingEpochs_i = params(i,4);
+%    split_i = str2num(params(i, 4));
+   runTime = [];
+   results_split = [];
+   for split = 1:cv.NumTestSets
+       fprintf('\nRUN %d/%d --- SPLIT: %d/%d\n', i, size(params, 1), split, N_SPLITS)
+        % Training data for this fold
+        X_train = X(training(cv, split), :);
+        Y_train = Y(training(cv, split), :);
         
-                % Generate FIS with given number of membership functions
-                opt = genfisOptions('GridPartition', ...
-                                    'NumMembershipFunctions',numMFs, ...,
-                                    'InputMembershipFunctionType', typeMF(i), ...,
-                                    'OutputMembershipFunctionType', outputMF(k));
-                
-                fis = genfis(X_train, Y_train, opt);
-          
-                % Train the ANFIS model
-                % Pass X and Y separately to anfis when using anfisOptions
+        % Testing data for this fold
+        X_test = X(test(cv, split), :);
+        Y_test = Y(test(cv, split), :); % Set the seed for reproducibility
+        
+        
+        % Hyperparameter tuning
+        
+        % Generate FIS with given number of membership functions
+        opt = genfisOptions('SubtractiveClustering', ...
+                            'ClusterInfluenceRange',cInfR_i, ...,
+                            'AcceptRatio', accRt_i, ...,
+                            'RejectRatio', rejRt_i);
+        
+        fis = genfis(X_train, Y_train, opt);
+        
+        % Train the ANFIS model
+        % Pass X and Y separately to anfis when using anfisOptions
+        
+        tic; % Start Timer
+        [trainedFis, trainErr, stepsize, testFis, testErr]=anfis([X_train Y_train], ...
+                                                                   fis, ...
+                                                                   trainingEpochs_i, ...
+                                                                   NaN, ...
+                                                                   [X_test Y_test]);
+        trainingTime = toc;
+        runTime = [runTime trainingTime];
+        
+        % Evaluate the performance
+        validErr = testErr(end);
+        Y_pred = evalfis(testFis, X_test);
+        
+        validErr = mean(abs(Y_test - Y_pred));
+        
+        % Store the results
+        %end
+        results_split = [results_split validErr];
+   end
 
-                tic; % Start Timer
-                [trainedFis, trainErr, stepsize, testFis, testErr]=anfis([X_train Y_train], ...
-                                                                           fis, ...
-                                                                           trainingEpochs(j), ...
-                                                                           NaN, ...
-                                                                           [X_test Y_test]);
-                trainingTime = toc;
-                runTime = [runTime trainingTime];
-
-                % Evaluate the performance
-                validErr = testErr(end);
-                Y_pred = evalfis(testFis, X_test);
-    
-                validErr = mean(abs(Y_test - Y_pred));
-    
-                % Store the results
-                %end
-                results_split = [results_split validErr];
-            end
-            newRow = [trainingEpochs(j), {typeMF(i)}, {outputMF(k)},...
-                        results_split, mean(results_split), std(results_split),...
-                        mean(runTime), std(runTime)];
-            results = [results; newRow]; 
-            results_split = [];
-        end
-    end
+    newRow = [trainingEpochs_i, {cInfR_i}, {accRt_i}, {rejRt_i},...
+                {results_split}, mean(results_split), std(results_split),...
+                mean(runTime), std(runTime)];
+    results = [results; newRow];
 end
-% fprintf("Elapsed Time: %f",toc);
+
 % Convert array to table
 resultsTable = array2table(results);
 
 % Set column headers
-resultsTable.Properties.VariableNames = {'Epochs', 'TypeMF', 'OutputMF', 'Split',... 
+resultsTable.Properties.VariableNames = {'Epochs', 'InfRange', 'AcceptRatio', 'RejectRatio', 'Split',... 
                                          'Mean', 'Std', 'MeanTime', 'StdTime'};
+
+% Sort table by Mean MAE
+resultsTable = sortrows(resultsTable, {'Mean', 'MeanTime'});
+
 %%
 % Specify the name of the CSV file
-filename = 'results.csv';
+filename = 'results_clustering.csv';
 
 % Export the table to CSV
 writetable(resultsTable, filename);
